@@ -4,6 +4,7 @@ IMAGE_NAME    ?= nginx-patched
 IMAGE_TAG     ?= 1.25-bookworm
 IMAGE         := $(IMAGE_NAME):$(IMAGE_TAG)
 
+.PHONY: all deb image test scan scan-vex clean
 
 deb:
 	docker build \
@@ -20,6 +21,10 @@ image: deb
 		-f Containerfile \
 		-t $(IMAGE) \
 		.
+
+test:
+	python3 test/compatibility_test.py
+	python3 test/cve_2026_15176_test.py
 
 DOCKER_SOCK := /var/run/docker.sock
 VEX_FILE     := vex/nginx-cve-2026-15176.openvex.json
