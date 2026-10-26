@@ -1,0 +1,1 @@
+# nginx-drop-in-replacement
