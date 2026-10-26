@@ -2,7 +2,10 @@ FROM debian:bookworm-slim
 
 ARG NGINX_VERSION=1.25.5
 ARG DEB_REVISION=1~bookworm
+ARG OPENSSL_VERSION=3.0.22-1~deb12u2
 
+ENV NGINX_VERSION=${NGINX_VERSION} \
+    PKG_RELEASE=${DEB_REVISION}
 
 RUN set -eux; \
     groupadd --system --gid 101 nginx; \
@@ -17,8 +20,8 @@ RUN set -eux; \
         ca-certificates \
         curl \
         gettext-base \
-        libssl3 \
-        openssl \
+        libssl3=${OPENSSL_VERSION} \
+        openssl=${OPENSSL_VERSION} \
     ; \
     apt-get install -y --no-install-recommends /tmp/nginx_*.deb; \
     rm -rf /var/lib/apt/lists/* /tmp/*.deb; \
