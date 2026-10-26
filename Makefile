@@ -6,6 +6,8 @@ IMAGE         := $(IMAGE_NAME):$(IMAGE_TAG)
 
 .PHONY: all deb image test scan scan-vex clean
 
+all: image test
+
 deb:
 	docker build \
 		--build-arg NGINX_VERSION=$(NGINX_VERSION) \
@@ -45,3 +47,6 @@ scan-vex:
 	@echo ""
 	@echo "Same CVE-2026-15176 check, this time with the VEX statement applied:"
 	@grep -i CVE-2026-15176 reports/patched-trivy-vex.txt reports/patched-grype-vex.txt || echo "  suppressed by the VEX document, as expected"
+
+clean:
+	rm -rf build/output
