@@ -4,7 +4,6 @@ It runs a compatibility test against both the original `nginx:1.25-bookworm` and
 It also runs CVE scans on the new image, including VEX-based demonstration of scanner suppression for the backport.
 
 ## Build
-
 **Requirements:**
   * Docker with BuildKit
   * `make`
@@ -25,6 +24,8 @@ make image
 ```
 Runs the full build process, builds the patched `.deb` from source (`make deb`) and then the runtime image (`nginx-patched:1.25-bookworm`).
 
+## Test & Scan
+
 **Test:**
 ```bash
 make test
@@ -41,14 +42,12 @@ make scan-vex
 Rescans the new image using `grype` and `trivy` (no need to install these)
 
 ## Image size
-
 | Image | Size |
 | :--- | :--- |
 | `nginx:1.25-bookworm` (baseline) | 188MB |
 | `nginx-patched:1.25-bookworm` (this build) | 93.8MB |
 
 ## Selected CVEs
-    
 To select the CVEs I used both the baseline scans on nginx:1.25-bookworm using [`grype`](reports\baseline-grype.txt) and [`trivy`](reports\baseline-trivy.txt), and an online research of the CVEs listed.
 Combining these allowed me to choose CVEs based on data from the reports, along with the understanding of the functional risk each CVE created and the complexity of the fix.
 
@@ -60,7 +59,7 @@ Combining these allowed me to choose CVEs based on data from the reports, along 
 | CVE-2026-15176 | Critical (Grype) / Medium (nginx's own advisory) | backport | nginx `ngx_http_core_module` | `1.25.5-1~bookworm` | backported from `1.30.6`/`1.31.7` | [upstream commit](https://github.com/nginx/nginx/commit/f8a23425bd6840c4c36b4264edf576ba3646156f) |
 
 > [!NOTE]
-> This project uses `3.0.22-1~deb12u2`, as it's the current resolvable `bookworm-security` release (14-1~deb12u2 is no longer available)
+> This project uses `3.0.22-1~deb12u2`, as it's the current resolvable `bookworm-security` release (`14-1~deb12u2` is no longer available)
 
 **Version bump pick:** 
 * CVE-2024-6119 - I chose this CVE because OpenSSL is a real dependency nginx actively links (`ngx_http_ssl_module`), with an official Debian fix already available, and is high severity.
@@ -68,12 +67,80 @@ Combining these allowed me to choose CVEs based on data from the reports, along 
 **Backport pick:** 
 * CVE-2026-15176 - I chose this CVE because it was both high severity and had a one-line upstream fix I could verify and apply with zero conflicts.
 
-## Residual risk assessment
+## Compatibility test
+[test\compatibility_test.py](test\compatibility_test.py) boots `nginx:1.25-bookworm` and `nginx-patched:1.25-bookworm` as separate containers and issues an identical request matrix at both.
 
+**This includes:**
+
+* `GET /` & `GET /does-not-exist` (the second one resulting in a 404)
+* `HEAD /`
+* `POST /` with 256KiB and 2MiB bodies.
+* A raw-socket malformed HTTP/1.1 request with no `Host` header (`GET / HTTP/1.1\r\n\r\n`)
+* `GET /ping` & `GET /status` against the containers with a bind-mounted custom [`conf file`](test/config/nginx.conf)
+
+
+**"Working correctly" means:**
+
+for every case above, status code, response body (byte-for-byte),
+and headers match exactly (*notice note below*) between the two images. Any mismatch raises `SystemExit` immediately and exits with a non-zero exit on the first failure.
+
+> [!NOTE]
+> headers matching excludes `Date`, `Connection`, `Keep-Alive` which legitimately differ per request or per process
+
+## Rescan & VEX
+
+```Bash
+make scan        # rescans the patched image
+make scan-vex    # reruns both scanners with vex/nginx-cve-2026-15176.openvex.json applied
+```
+
+**Diff against the baseline:**
+
+| Scanner | Baseline | Patched |
+| :--- | :--- | :--- |
+| Trivy | 831 | 340 |
+| Grype | 799 | 353 |
+
+Most of that drop is the missing module packages and a fresher base image, not the two CVE fixes I made.
+> [!NOTE]
+> scanners don't shrink their count for a backport by themselves, the way they do for a real version bump.
+
+[`vex/nginx-cve-2026-15176.openvex.json`](vex/nginx-cve-2026-15176.openvex.json) declares the CVE **fixed**, citing the upstream commit backported.
+Therefore, we can see `CVE-2026-15176` **is** present in the raw Grype rescan and **absent** once the VEX document is applied (the suppression actually works, not just in theory).
+
+## How I verified the CVE-2026-15176 fix actually works
+
+Applying cleanly and matching a verified upstream commit proves the *patch* is correct, but not that it closes the hole.
+I wanted to make sure it works, so I reproduced the exact [config](test/config/cve_2026_15176.conf) from the upstream fix commit's own message, against both images:
+
+**The config:**
+```nginx
+server {
+    listen 80;
+    server_name cve-repro;
+    location /foo/ {
+        alias /bar-target-dir/;
+        rewrite ^/foo/.*$ /x;
+        return 200 "request_filename=$request_filename\n";
+    }
+}
+```
+**The request:**
+`GET /foo/1` with `Host: cve-repro`:
+
+**The response:**
+- **Baseline:** HTTP 200, `$request_filename` comes back as 11 **null bytes** followed by `/x` (corrupted/uninitialized pool memory sent to the client), not a correct path. No alert logged.
+- **Patched:** HTTP 200 with an *empty* `$request_filename`, and the error log shows
+  `[alert] "alias" cannot be used in location "/foo/" where URI was rewritten` (the backport's
+  new check rejects the mapping before the unsafe arithmetic runs).
+
+I created an automated regression [test](test/cve_2026_15176_repro.py) for this exact case.
+
+## Residual risk assessment
 It's important to mention that this image still contains CVEs.
 I only handled 2 CVEs out of hundreds found in this image. This is due to the scope and the time frame of this assignment. 
 
-**Why there are still Risks in this image:**
+**Why there are still risks in this image:**
 * The current version of `OpenSSL` is `3.0.22`. This handles CVE-2024-6119, but later OpenSSL vulnerabilities are still present. 
 * The patched image uses `nginx` version `1.25.5` with the patch I added for `CVE-2026-15176`, meaning other CVEs that are present in this version are still active. 
 * Most packages stayed untouched and so the CVEs they contain stay in the patched image.
