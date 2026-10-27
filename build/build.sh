@@ -16,14 +16,13 @@ for f in "$DSC" "$ORIG" "$DEBIAN_TAR"; do
     curl -fsSL -o "$f" "$SRC_BASE/$f"
 done
 
-# dpkg-source verifies the downloaded files against the checksums recorded in the .dsc.
 dpkg-source --no-check -x "$DSC" nginx-src
 cd nginx-src
 
 echo "Wiring local patches into quilt's patch series"
 mkdir -p debian/patches
 : > debian/patches/series
-# Copies our patches into the Debian source tree and adds them to quilt's patch list.
+
 for p in /build/patches/*.patch; do
     [ -e "$p" ] || continue
     cp "$p" debian/patches/
@@ -33,7 +32,7 @@ echo "patch series:"
 cat debian/patches/series
 
 echo "Compiling the .deb from source (dpkg-buildpackage)"
-# Patches applied automatically as part of the build.
+
 dpkg-buildpackage -b -uc -us
 
 echo "Build finished, copying output"

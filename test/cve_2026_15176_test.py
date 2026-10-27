@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Regression test for CVE-2026-15176 (nginx alias+rewrite buffer overflow in
-ngx_http_map_uri_to_path). Confirms the baseline still reproduces the bug and
-the patched image's backport blocks it. Exits non-zero if the fix is missing,
+"""This regression test for CVE-2026-15176 (nginx alias+rewrite buffer overflow in
+ngx_http_map_uri_to_path). Checks that the baseline still reproduces the bug, while
+the patched image's backport blocks it. It exits non-zero if the fix is missing,
 broken, or either server stops responding.
 """
 from __future__ import annotations
@@ -30,7 +30,7 @@ def still_alive(container: NginxTestHarness) -> bool:
 def extract_request_filename(body: bytes) -> bytes:
     prefix = b"request_filename="
     if not body.startswith(prefix):
-        raise ValueError(f"unexpected response body: {body!r}")
+        raise ValueError(f"Unexpected response body: {body!r}")
     return body[len(prefix):].rstrip(b"\n")
 
 
@@ -57,14 +57,14 @@ def check_fix_evidence(b_alert: bool, b_filename: bytes | None, p_alert: bool, p
 
     if b_alert:
         failures.append(
-            "baseline unexpectedly logged the 'alias' alert -- either the "
+            "Baseline unexpectedly logged the 'alias' alert -- either the "
             "baseline image changed, or this repro no longer matches the "
             "vulnerable code path."
         )
 
     if b_filename is None or b"\x00" not in b_filename:
         failures.append(
-            f"baseline's request_filename ({b_filename!r}) did not contain "
+            f"Baseline's request_filename ({b_filename!r}) did not contain "
             "corrupted/null memory as expected -- this repro's alias/rewrite "
             "length relationship may have stopped reliably triggering the "
             "unsigned-underflow code path; re-check against the upstream "
@@ -89,11 +89,11 @@ def check_fix_evidence(b_alert: bool, b_filename: bytes | None, p_alert: bool, p
 
 def check_liveness(baseline: NginxTestHarness, patched: NginxTestHarness) -> list[str]:
     b_alive, p_alive = still_alive(baseline), still_alive(patched)
-    print(f"baseline responsive after the probe : {b_alive}")
-    print(f"patched  responsive after the probe : {p_alive}")
+    print(f"Baseline responsive after the probe : {b_alive}")
+    print(f"Patched  responsive after the probe : {p_alive}")
     if b_alive and p_alive:
         return []
-    return ["a server stopped responding after the probe (possible crash)."]
+    return ["A server stopped responding after the probe (possible crash)."]
 
 
 def report_result(failures: list[str]) -> int:
@@ -104,7 +104,7 @@ def report_result(failures: list[str]) -> int:
         return 1
 
     print(
-        "\nbaseline reproduces the known-vulnerable behavior (no alert), "
+        "\nBaseline reproduces the known-vulnerable behavior (no alert), "
         "patched image's backport is active (alert logged, safe empty result), "
         "neither server crashed."
     )

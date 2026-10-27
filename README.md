@@ -25,7 +25,6 @@ make image
 Runs the full build process, builds the patched `.deb` from source (`make deb`) and then the runtime image (`nginx-patched:1.25-bookworm`).
 
 ## Test & Scan
-
 **Test:**
 ```bash
 make test
@@ -45,17 +44,17 @@ Rescans the new image using `grype` and `trivy` (no need to install these)
 | Image | Size |
 | :--- | :--- |
 | `nginx:1.25-bookworm` (baseline) | 188MB |
-| `nginx-patched:1.25-bookworm` (this build) | 93.8MB |
+| `nginx-patched:1.25-bookworm` (this build) | 189MB |
 
 ## Selected CVEs
-To select the CVEs I used both the baseline scans on nginx:1.25-bookworm using [`grype`](reports\baseline-grype.txt) and [`trivy`](reports\baseline-trivy.txt), and an online research of the CVEs listed.
+To select the CVEs I used both the baseline scans on nginx:1.25-bookworm using [`grype`](reports/baseline-grype.txt) and [`trivy`](reports/baseline-trivy.txt), and an online research of the CVEs listed.
 Combining these allowed me to choose CVEs based on data from the reports, along with the understanding of the functional risk each CVE created and the complexity of the fix.
 
 **I chose to fix 2 main CVEs, each in a different technique:**
 
 | CVE ID | Severity | Fix Method | Component | Current Version | Fixed Version | Evidence link |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| CVE-2024-6119 | High (CVSS 7.5) | bump | OpenSSL (`libssl3`/`openssl`) | `3.0.11-1~deb12u2` | `14-1~deb12u2` *see note below* | [Debian security tracker](https://security-tracker.debian.org/tracker/CVE-2024-6119) |
+| CVE-2024-6119 | High (CVSS 7.5) | bump | OpenSSL (`libssl3`/`openssl`) | `3.0.11-1~deb12u2` | `3.0.14-1~deb12u2` *see note below* | [Debian security tracker](https://security-tracker.debian.org/tracker/CVE-2024-6119) |
 | CVE-2026-15176 | Critical (Grype) / Medium (nginx's own advisory) | backport | nginx `ngx_http_core_module` | `1.25.5-1~bookworm` | backported from `1.30.6`/`1.31.7` | [upstream commit](https://github.com/nginx/nginx/commit/f8a23425bd6840c4c36b4264edf576ba3646156f) |
 
 > [!NOTE]
@@ -68,7 +67,7 @@ Combining these allowed me to choose CVEs based on data from the reports, along 
 * CVE-2026-15176 - I chose this CVE because it was both high severity and had a one-line upstream fix I could verify and apply with zero conflicts.
 
 ## Compatibility test
-[test\compatibility_test.py](test\compatibility_test.py) boots `nginx:1.25-bookworm` and `nginx-patched:1.25-bookworm` as separate containers and issues an identical request matrix at both.
+[test/compatibility_test.py](test/compatibility_test.py) boots `nginx:1.25-bookworm` and `nginx-patched:1.25-bookworm` as separate containers and issues an identical request matrix at both.
 
 **This includes:**
 
@@ -82,14 +81,14 @@ Combining these allowed me to choose CVEs based on data from the reports, along 
 **"Working correctly" means:**
 
 for every case above, status code, response body (byte-for-byte),
-and headers match exactly (*notice note below*) between the two images. Any mismatch raises `SystemExit` immediately and exits with a non-zero exit on the first failure.
+and headers match exactly (*see note below*) between the two images. Any mismatch raises `SystemExit` immediately and exits with a non-zero exit on the first failure.
 
 > [!NOTE]
 > headers matching excludes `Date`, `Connection`, `Keep-Alive` which legitimately differ per request or per process
 
 ## Rescan & VEX
 
-```Bash
+```bash
 make scan        # rescans the patched image
 make scan-vex    # reruns both scanners with vex/nginx-cve-2026-15176.openvex.json applied
 ```
@@ -98,10 +97,10 @@ make scan-vex    # reruns both scanners with vex/nginx-cve-2026-15176.openvex.js
 
 | Scanner | Baseline | Patched |
 | :--- | :--- | :--- |
-| Trivy | 831 | 340 |
-| Grype | 799 | 353 |
+| Trivy | 831 | 456 |
+| Grype | 799 | 433 |
 
-Most of that drop is the missing module packages and a fresher base image, not the two CVE fixes I made.
+Most of that drop is a fresher base image (newer point-release packages across the board), not the two CVE fixes I made.
 > [!NOTE]
 > scanners don't shrink their count for a backport by themselves, the way they do for a real version bump.
 
@@ -162,7 +161,7 @@ Although it wasn't my "comfort zone" I learned a lot by doing this assignment, i
 * Apparently hardcoded apt pins go stale fast, not just eventually. I pinned OpenSSL to an exact version and it stopped resolving within this same project. Debian's security mirror only keeps the current point release around, not the one you pinned last week.
 
 **What I'd do differently with more time:** 
-I'd probably point the OpenSSL pin at snapshot.debian.org instead of the live mirror so it can't go stale again. I'd also try and patch `CVE-2026-42533`, as it was the most severe nginx CVE I found, which I didn't attempt given the time budget. Looking back at it now, it might not be as complex as I expected it to be.
+I'd probably point the OpenSSL pin at snapshot.debian.org instead of the live mirror so it can't go stale again. I'd also try and patch `CVE-2026-42533`, as it was the most severe nginx CVE I found, which I didn't attempt given the time budget. Looking back at it now, it might not be as complex as I expected it to be. Last thing I'd do is add more test cases to the compatibility test, so it would cover more edge cases.
 
 ## AI usage
 

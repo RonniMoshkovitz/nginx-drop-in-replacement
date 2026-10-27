@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared helpers for the Docker-based nginx tests, including
+"""This file contains utilities for Docker based nginx tests. It includs
 NginxTestHarness, a context manager that boots a throwaway nginx container
 for the duration of a `with` block and exposes simple HTTP helpers.
 """
@@ -45,8 +45,8 @@ def ensure_images_built(*images: str) -> None:
 def http_request(port: int, path: str, method: str = "GET", body: bytes | None = None,
                   headers: dict | None = None):
     """Returns (status, headers, body). If the connection drops before a response
-    is readable (e.g. the server crashed), returns (None, {}, b"") instead of raising,
-    so callers can treat "no response" as a comparable outcome rather than a crash."""
+    is readable it returns (None, {}, b"") instead of raising an error. This lets
+    callers treat "no response" as a comparable outcome rather than a crash."""
     req = urllib.request.Request(
         f"http://{LOOPBACK_HOST}:{port}{path}", data=body, method=method, headers=headers or {},
     )
@@ -60,8 +60,8 @@ def http_request(port: int, path: str, method: str = "GET", body: bytes | None =
 
 
 def raw_tcp_request(port: int, raw_bytes: bytes):
-    """Send bytes directly over a socket -- used where urllib refuses to build a
-    deliberately invalid HTTP/1.1 request, e.g. one with no Host header."""
+    """Send bytes directly over a socket (used where urllib refuses to build a
+    deliberately invalid HTTP/1.1 request)."""
     with socket.create_connection((LOOPBACK_HOST, port), timeout=CONNECT_TIMEOUT) as sock:
         sock.sendall(raw_bytes)
         sock.shutdown(socket.SHUT_WR)
@@ -120,7 +120,7 @@ class NginxTestHarness:
     def _remove_container(self) -> None:
         result = subprocess.run(["docker", "rm", "-f", self.container_id], capture_output=True, text=True)
         if result.returncode != 0:
-            print(f"warning: failed to remove container {self.container_id}: {result.stderr.strip()}",
+            print(f"Warning: failed to remove container {self.container_id}: {result.stderr.strip()}",
                   file=sys.stderr)
 
     def logs(self) -> str:
