@@ -160,10 +160,8 @@ Although it wasn't my "comfort zone" I learned a lot by doing this assignment, i
 
 * Apparently hardcoded apt pins go stale fast, not just eventually. I pinned OpenSSL to an exact version and it stopped resolving within this same project. Debian's security mirror only keeps the current point release around, not the one you pinned last week.
 
-* Partway through, I noticed this build was missing some optional nginx modules (GeoIP, image-filter, XSLT, njs) that the real image ships. In order to make the patched image a drop-in replacement for the original `nginx:1.25-bookworm`, I had to match the patched version's filesystem layout (and module functionality) to the base image. nginx.org publishes these four as the same pinned, prebuilt `.deb`s upstream's own Dockerfile installs, so I pulled those modules in alongside the self-compiled nginx `.deb`.
-
 **What I'd do differently with more time:** 
-I'd probably point the OpenSSL pin at snapshot.debian.org instead of the live mirror so it can't go stale again. I'd also try and patch `CVE-2026-42533`, as it was the most severe nginx CVE I found, which I didn't attempt given the time budget. Looking back at it now, it might not be as complex as I expected it to be. I'd also add more test cases to the compatibility test so it would cover more edge cases (for example covering the missing modules as a mismatch between base and patched versions).
+I'd probably point the OpenSSL pin at snapshot.debian.org instead of the live mirror so it can't go stale again. I'd also try and patch `CVE-2026-42533`, as it was the most severe nginx CVE I found, which I didn't attempt given the time budget. Looking back at it now, it might not be as complex as I expected it to be. Last thing I'd do is add more test cases to the compatibility test, so it would cover more edge cases.
 
 ## AI usage
 
