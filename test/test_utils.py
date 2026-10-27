@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """This file contains utilities for Docker based nginx tests. It includs
 NginxTestHarness, a context manager that boots a throwaway nginx container
-for the duration of a `with` block and exposes simple HTTP helpers.
+and exposes simple HTTP helpers.
 """
 from __future__ import annotations
 
@@ -20,10 +20,10 @@ PATCHED_IMAGE = os.environ.get("PATCHED_IMAGE", "nginx-patched:1.25-bookworm")
 IGNORED_HEADERS = {"date", "connection", "keep-alive"}
 LOOPBACK_HOST = "127.0.0.1"
 
-CONNECT_TIMEOUT = 5.0       # raw-socket connect, used by raw_tcp_request
-REQUEST_TIMEOUT = 10.0      # normal HTTP request, used by http_request
-READY_PROBE_TIMEOUT = 1.0   # single readiness-check request
-READY_TIMEOUT_DEFAULT = 20.0  # overall budget for a container to become ready
+CONNECT_TIMEOUT = 5.0       # for raw-socket connect, used by raw_tcp_request
+REQUEST_TIMEOUT = 10.0      # for normal HTTP request, used by http_request
+READY_PROBE_TIMEOUT = 1.0   # for single readiness-check request
+READY_TIMEOUT_DEFAULT = 20.0  # for overall budget for a container to become ready
 
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess:
@@ -160,4 +160,4 @@ class NginxTestHarness:
             except Exception as exc:  # noqa: BLE001 - connection refused while booting
                 last_error = exc
                 time.sleep(0.2)
-        raise RuntimeError(f"server on port {self.port} never became ready: {last_error}")
+        raise RuntimeError(f"Server on port {self.port} never became ready: {last_error}")
