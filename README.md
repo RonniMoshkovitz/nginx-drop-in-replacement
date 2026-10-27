@@ -54,7 +54,7 @@ Combining these allowed me to choose CVEs based on data from the reports, along 
 
 | CVE ID | Severity | Fix Method | Component | Current Version | Fixed Version | Evidence link |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| CVE-2024-6119 | High (CVSS 7.5) | bump | OpenSSL (`libssl3`/`openssl`) | `3.0.11-1~deb12u2` | `14-1~deb12u2` *see note below* | [Debian security tracker](https://security-tracker.debian.org/tracker/CVE-2024-6119) |
+| CVE-2024-6119 | High (CVSS 7.5) | bump | OpenSSL (`libssl3`/`openssl`) | `3.0.11-1~deb12u2` | `3.0.14-1~deb12u2` *see note below* | [Debian security tracker](https://security-tracker.debian.org/tracker/CVE-2024-6119) |
 | CVE-2026-15176 | Critical (Grype) / Medium (nginx's own advisory) | backport | nginx `ngx_http_core_module` | `1.25.5-1~bookworm` | backported from `1.30.6`/`1.31.7` | [upstream commit](https://github.com/nginx/nginx/commit/f8a23425bd6840c4c36b4264edf576ba3646156f) |
 
 > [!NOTE]
